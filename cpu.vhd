@@ -1,7 +1,7 @@
 -- cpu.vhd: Simple 8-bit CPU (BrainLove interpreter)
 -- Copyright (C) 2021 Brno University of Technology,
 --                    Faculty of Information Technology
--- Author(s): xkuzni04
+-- Author(s): xsvobo1x
 --
 
 library ieee;
@@ -54,7 +54,9 @@ architecture behavioral of cpu is
 	signal pc_clear		: std_logic;
 
 	-- CNT
-	
+	signal cnt_num			: std_logic_vector (7 downto 0);
+	signal cnt_inc			: std_logic;
+	signal cnt_dec			: std_logic;
 	
 	-- PTR
 	signal ptr_inc			: std_logic;
@@ -100,13 +102,18 @@ architecture behavioral of cpu is
 		S_PRINT2,
 		S_LOAD,
 		S_LOAD1,
-		S_LOAD2,
 		S_WHILE_BEG,
 		S_WHILE_BEG1,
-		S_WHILE_0,
-		S_WHILE_1,
+		S_WHILE_BEG2,
+		S_WHILE_BEG3,
 		S_WHILE_END,
+		S_WHILE_END1,
+		S_WHILE_END2,
+		S_WHILE_END3,
+		S_WHILE_END4,
 		S_BREAK,
+		S_BREAK1,
+		S_BREAK2,
 		S_RETURN,
 		s_OTHERS, 	
 		S_CMD_NULL
@@ -153,7 +160,18 @@ begin
 	-------------------------------------------------------------------------
 	
 	-- CNT ------------------------------------------------------------------
-	
+	cnt: process (CLK, RESET, cnt_inc, cnt_dec)
+	begin
+		if (RESET = '1') then
+			cnt_num <= (others => '0');
+		elsif (CLK'event) and (CLK = '1') then
+			if (cnt_inc = '1') then
+				cnt_num <= cnt_num + 1;
+			elsif (cnt_dec = '1') then
+				cnt_num <= cnt_num - 1;
+			end if;
+		end if;
+	end process;
 	-------------------------------------------------------------------------
 	
 	-- PTR ------------------------------------------------------------------
@@ -182,9 +200,9 @@ begin
 		elsif (CLK'event) and (CLK = '1') then
 			case mux_sel is
 				when "00" 	=>	mux_out <= IN_DATA;
-				when "01" 	=>	mux_out <= DATA_RDATA;
-				when "10" 	=>	mux_out <= DATA_RDATA + 1;
-				when "11" 	=>	mux_out <= DATA_RDATA - 1;
+				when "01" 	=>	mux_out <= DATA_RDATA + 1;
+				when "10" 	=>	mux_out <= DATA_RDATA - 1;
+				when "11" 	=>	mux_out <= DATA_RDATA;
 				when others =>	null;
 			end case;
 		end if;
@@ -215,6 +233,8 @@ begin
 		ptr_inc		<= '0';
 		ptr_dec		<= '0';
 		ptr_clear	<= '0';
+		cnt_inc 		<= '0';
+		cnt_dec		<= '0';
 		mux_sel		<= "00";
 
 		CODE_EN		<= '0';
@@ -226,7 +246,7 @@ begin
 		case pstate is
 			when S_IDLE =>		ptr_clear <= '1';
 									pc_clear  <= '1';
-									nstate 	  <= S_FETCH;	
+									nstate 	 <= S_FETCH;	
 			
 			when S_FETCH =>	CODE_EN <= '1';
 									nstate <= S_DECODE;	
@@ -243,20 +263,21 @@ begin
 										when I_BREAK 		=>	nstate	<= S_BREAK;
 										when I_RETURN		=>	nstate	<= S_RETURN;
 										when I_OTHERS		=>	nstate	<= S_OTHERS;
+										when others			=> nstate	<= S_OTHERS;
 									end case;
 			
 			when S_PTR_INC =>	pc_inc	<= '1';
 									ptr_inc	<= '1';
 									nstate	<= S_FETCH;
 					
-			when S_PTR_DEC =>	pc_dec	<= '1';
-									ptr_inc	<= '1';
+			when S_PTR_DEC =>	pc_inc	<= '1';
+									ptr_dec	<= '1';
 									nstate <= S_FETCH;
 			
 			when S_DATA_INC => 	DATA_EN		<= '1';
 										DATA_WREN	<= '0';
 										nstate		<= S_DATA_INC1;
-			when S_DATA_INC1 =>	mux_sel   	<= "10";
+			when S_DATA_INC1 =>	mux_sel   	<= "01";
 										nstate  		<= S_DATA_INC2;
 			when S_DATA_INC2 =>	DATA_EN		<= '1';
 										DATA_WREN	<= '1';
@@ -266,84 +287,115 @@ begin
 			when S_DATA_DEC =>	DATA_EN 		<= '1';
 										DATA_WREN	<= '0';
 										nstate 		<= S_DATA_DEC1;
-			when S_DATA_DEC1 =>	mux_sel   	<= "11";
+			when S_DATA_DEC1 =>	mux_sel   	<= "10";
 										nstate 		<= S_DATA_DEC2;
 			when S_DATA_DEC2 =>	DATA_EN 		<= '1';
 										DATA_WREN 	<= '1';
 										pc_inc 		<= '1';
 										nstate 	<= S_FETCH;
-
-			when S_PRINT =>	if (OUT_BUSY = '0') then
-										DATA_EN 	<= '1';
-										nstate 	<= S_PRINT1;
-									else
+			
+			when S_PRINT =>	DATA_EN 		<= '1';
+									DATA_WREN 	<= '0';
+									nstate		<= S_PRINT1;
+			when S_PRINT1 =>	if (OUT_BUSY = '1') then
 										nstate 	<= S_PRINT;
-									end if;
-			when S_PRINT1 =>	nstate 		<= S_PRINT2;
-			when S_PRINT2 => 	OUT_DATA   	<= DATA_RDATA;
-									OUT_WREN   	<= '1';
-									pc_inc     	<= '1';
-									nstate 		<= S_FETCH;
-												
-			when S_LOAD =>		IN_REQ 	 	<= '1';
-									mux_sel    	<= "00";
-									nstate   	<= S_LOAD1;		
-			when S_LOAD1 =>	if (IN_VLD /= '1') then 
-										IN_REQ   <= '1';
-										mux_sel  <= "00";		  -- send input data to output 
-										nstate 	<= S_LOAD1;
 									else
-										nstate 	<= S_LOAD2;
+										OUT_DATA <= DATA_RDATA;
+										OUT_WREN <= '1';
+										pc_inc 	<= '1';
+										nstate 	<= S_FETCH;
 									end if;
-			when S_LOAD2 =>	DATA_EN 	  	<= '1';
-									DATA_WREN  	<= '1';
-									pc_inc 	  	<= '1';
-									nstate 		<= S_FETCH;
+									
+			when S_LOAD =>		IN_REQ 	<= '1';
+									mux_sel	<= "00";
+									nstate	<= S_LOAD1;
+			when S_LOAD1 =>	if (IN_VLD = '0') then
+										DATA_EN		<= '1';
+										DATA_WREN	<= '1';
+										pc_inc		<= '1';
+										nstate 		<= S_FETCH;
+									else
+										nstate		<= S_LOAD;
+									end if;
 								
-			when S_WHILE_BEG =>	pc_inc 		<= '1';
-										DATA_EN 		<= '1';
-										DATA_WREN 	<= '0';
-										nstate 		<= S_WHILE_BEG1;			
-			when S_WHILE_BEG1 =>	if DATA_RDATA = "00000000" then
-											CODE_EN <= '1';
-											nstate <= S_BREAK;
+			when S_WHILE_BEG =>	DATA_EN		<= '1';
+										DATA_WREN	<= '0';
+										pc_inc		<= '1';
+										nstate 		<= S_WHILE_BEG1;
+			when S_WHILE_BEG1 =>	if (DATA_RDATA /= "00000000") then
+											nstate 	<= S_FETCH;
 										else
-											nstate <= S_FETCH;
+											cnt_inc 	<= '1';
+											nstate 	<= S_WHILE_BEG2;
 										end if;
-					
-			when S_WHILE_END =>	if (DATA_RDATA /= "00000000") then -- nots nul 
-											if (dc_ins = I_WHILE_BEG) then
-												nstate <= S_FETCH;
-											else						
-												pc_dec 	  <= '1'; -- jump to[ 
-												nstate <= S_WHILE_0;
+			when S_WHILE_BEG2 =>	CODE_EN 		<= '1';
+										nstate 		<= S_WHILE_BEG3;
+			when S_WHILE_BEG3 => if (cnt_num = "00000000") then
+											nstate	<= S_FETCH;
+										else
+											if (CODE_DATA = x"5B") then 
+												cnt_inc 	<= '1';
+											elsif (CODE_DATA = x"5D") then
+												cnt_dec 	<= '1';
 											end if;
-										else 
-											pc_inc <= '1';
+											pc_inc 	<= '1';
+											nstate 	<= S_WHILE_BEG2;
+										end if;
+
+			when S_WHILE_END =>	DATA_EN 		<= '1';
+										DATA_WREN 	<= '0';
+										nstate 		<= S_WHILE_END1;
+			when S_WHILE_END1 => if (DATA_RDATA = "00000000") then
+											pc_inc 	<= '1';
+											nstate 	<= S_FETCH;
+										else
+											cnt_inc <= '1';
+											pc_dec <= '1';
+											nstate <= S_WHILE_END2;
+										end if;
+			when S_WHILE_END2 =>	CODE_EN <= '1';
+										nstate <= S_WHILE_END3;
+			when S_WHILE_END3 => if (cnt_num = "00000000") then
 											nstate <= S_FETCH;
-										end if;	
-					
-			when S_BREAK	=>	if (dc_ins = I_WHILE_END) then  -- end of loop 
-										nstate <= S_FETCH;
-									else 
-										nstate <= S_WHILE_1;
+										else
+											if (CODE_DATA = X"5D") then
+												cnt_inc <= '1';
+											elsif (CODE_DATA = X"5B") then
+												cnt_dec <= '1';
+											end if;
+											nstate <= S_WHILE_END4;
+										end if;
+			when S_WHILE_END4 => if (cnt_num = "00000000") then
+											pc_inc <= '1';
+										else
+											pc_dec <= '1';
+										end if;
+										nstate <= S_WHILE_END2;
+									
+			when S_BREAK => 	pc_inc 	<= '1';
+									cnt_inc 	<= '1';
+									nstate <= S_BREAK1;
+			when S_BREAK1 => 	if (cnt_num = "00000000") then
+										nstate	<= S_FETCH;
+									else
+										CODE_EN	<= '1';
+										nstate	<= S_BREAK2;
 									end if;
-					
-			when S_WHILE_0 =>	CODE_EN 	  <= '1';  
-									nstate <= S_WHILE_END;
-			when S_WHILE_1 => pc_inc <= '1';
-									CODE_EN <= '1';
-									nstate <= S_BREAK;
-						
+			when S_BREAK2 => if (CODE_DATA = X"5B") then
+										cnt_inc	<= '1';
+									elsif (CODE_DATA = X"5D") then
+										cnt_dec	<= '1';
+									end if;
+									pc_inc <= '1';
+									nstate <= S_BREAK1;
+									
 			when S_RETURN =>	nstate <= S_RETURN;
 
-						-- if not command skip to next 
 			when S_OTHERS =>	pc_inc <= '1';
 									nstate <= S_FETCH;
 						
-			when others =>		null; 			--  null -end of program 
+			when others =>		null;
 		end case;
 	end process;
 	-------------------------------------------------------------------------
-		
 end behavioral;
