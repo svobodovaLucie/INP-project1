@@ -50,8 +50,8 @@ architecture behavioral of cpu is
 	-- PC
 	signal pc_inc			: std_logic;
 	signal pc_dec			: std_logic;
-	signal pc_code_addr	: std_logic_vector (11 downto 0);
-	signal pc_clear		: std_logic;
+	signal pc_code_addr		: std_logic_vector (11 downto 0);
+	signal pc_clear			: std_logic;
 
 	-- CNT
 	signal cnt_num			: std_logic_vector (7 downto 0);
@@ -61,7 +61,7 @@ architecture behavioral of cpu is
 	-- PTR
 	signal ptr_inc			: std_logic;
 	signal ptr_dec			: std_logic;
-	signal ptr_data_addr	: std_logic_vector (9 downto 0);
+	signal ptr_data_addr		: std_logic_vector (9 downto 0);
 	signal ptr_clear		: std_logic;
  
    -- MUX
@@ -229,170 +229,170 @@ begin
 		-- inicializace 
 		pc_inc		<= '0';
 		pc_dec		<= '0';
-		pc_clear		<= '0';
+		pc_clear	<= '0';
 		ptr_inc		<= '0';
 		ptr_dec		<= '0';
 		ptr_clear	<= '0';
-		cnt_inc 		<= '0';
+		cnt_inc 	<= '0';
 		cnt_dec		<= '0';
 		mux_sel		<= "00";
 
 		CODE_EN		<= '0';
 		DATA_EN		<= '0';
 		DATA_WREN	<= '0';
-		OUT_WREN		<= '0';
+		OUT_WREN	<= '0';
 		IN_REQ		<= '0';
 
 		case pstate is
-			when S_IDLE =>		ptr_clear <= '1';
-									pc_clear  <= '1';
-									nstate 	 <= S_FETCH;	
+			when S_IDLE =>	ptr_clear <= '1';
+					pc_clear  <= '1';
+					nstate 	 <= S_FETCH;	
 			
 			when S_FETCH =>	CODE_EN <= '1';
-									nstate <= S_DECODE;	
+					nstate <= S_DECODE;	
 			
 			when S_DECODE =>	case dc_ins is
-										when I_PTR_INC		=> nstate 	<= S_PTR_INC;
-										when I_PTR_DEC 	=>	nstate	<= S_PTR_DEC;							
-										when I_DATA_INC 	=>	nstate	<= S_DATA_INC;
-										when I_DATA_DEC	=>	nstate	<= S_DATA_DEC;
-										when I_WHILE_BEG	=>	nstate	<= S_WHILE_BEG;
-										when I_WHILE_END	=>	nstate	<= S_WHILE_END;
-										when I_PRINT		=>	nstate	<= S_PRINT;
-										when I_LOAD			=>	nstate	<= S_LOAD;
-										when I_BREAK 		=>	nstate	<= S_BREAK;
-										when I_RETURN		=>	nstate	<= S_RETURN;
-										when I_OTHERS		=>	nstate	<= S_OTHERS;
-										when others			=> nstate	<= S_OTHERS;
-									end case;
+							when I_PTR_INC		=> nstate 	<= S_PTR_INC;
+							when I_PTR_DEC 		=> nstate	<= S_PTR_DEC;							
+							when I_DATA_INC 	=> nstate	<= S_DATA_INC;
+							when I_DATA_DEC		=> nstate	<= S_DATA_DEC;
+							when I_WHILE_BEG	=> nstate	<= S_WHILE_BEG;
+							when I_WHILE_END	=> nstate	<= S_WHILE_END;
+							when I_PRINT		=> nstate	<= S_PRINT;
+							when I_LOAD		=> nstate	<= S_LOAD;
+							when I_BREAK 		=> nstate	<= S_BREAK;
+							when I_RETURN		=> nstate	<= S_RETURN;
+							when I_OTHERS		=> nstate	<= S_OTHERS;
+							when others		=> nstate	<= S_OTHERS;
+						end case;
 			
 			when S_PTR_INC =>	pc_inc	<= '1';
-									ptr_inc	<= '1';
-									nstate	<= S_FETCH;
+						ptr_inc	<= '1';
+						nstate	<= S_FETCH;
 					
 			when S_PTR_DEC =>	pc_inc	<= '1';
-									ptr_dec	<= '1';
-									nstate <= S_FETCH;
+						ptr_dec	<= '1';
+						nstate <= S_FETCH;
 			
 			when S_DATA_INC => 	DATA_EN		<= '1';
-										DATA_WREN	<= '0';
-										nstate		<= S_DATA_INC1;
+						DATA_WREN	<= '0';
+						nstate		<= S_DATA_INC1;
 			when S_DATA_INC1 =>	mux_sel   	<= "01";
-										nstate  		<= S_DATA_INC2;
+						nstate  	<= S_DATA_INC2;
 			when S_DATA_INC2 =>	DATA_EN		<= '1';
-										DATA_WREN	<= '1';
-										pc_inc		<= '1';
-										nstate  		<= S_FETCH;
+						DATA_WREN	<= '1';
+						pc_inc		<= '1';
+						nstate  	<= S_FETCH;
 						
-			when S_DATA_DEC =>	DATA_EN 		<= '1';
-										DATA_WREN	<= '0';
-										nstate 		<= S_DATA_DEC1;
+			when S_DATA_DEC =>	DATA_EN 	<= '1';
+						DATA_WREN	<= '0';
+						nstate 		<= S_DATA_DEC1;
 			when S_DATA_DEC1 =>	mux_sel   	<= "10";
-										nstate 		<= S_DATA_DEC2;
-			when S_DATA_DEC2 =>	DATA_EN 		<= '1';
-										DATA_WREN 	<= '1';
-										pc_inc 		<= '1';
-										nstate 	<= S_FETCH;
+						nstate 		<= S_DATA_DEC2;
+			when S_DATA_DEC2 =>	DATA_EN 	<= '1';
+						DATA_WREN 	<= '1';
+						pc_inc 		<= '1';
+						nstate 		<= S_FETCH;
 			
-			when S_PRINT =>	DATA_EN 		<= '1';
-									DATA_WREN 	<= '0';
-									nstate		<= S_PRINT1;
+			when S_PRINT =>	DATA_EN 	<= '1';
+					DATA_WREN 	<= '0';
+					nstate		<= S_PRINT1;
 			when S_PRINT1 =>	if (OUT_BUSY = '1') then
-										nstate 	<= S_PRINT;
-									else
-										OUT_DATA <= DATA_RDATA;
-										OUT_WREN <= '1';
-										pc_inc 	<= '1';
-										nstate 	<= S_FETCH;
-									end if;
+							nstate 	<= S_PRINT;
+						else
+							OUT_DATA <= DATA_RDATA;
+							OUT_WREN <= '1';
+							pc_inc 	<= '1';
+							nstate 	<= S_FETCH;
+						end if;
 									
-			when S_LOAD =>		IN_REQ 	<= '1';
-									mux_sel	<= "00";
-									nstate	<= S_LOAD1;
+			when S_LOAD =>	IN_REQ 	<= '1';
+					mux_sel	<= "00";
+					nstate	<= S_LOAD1;
 			when S_LOAD1 =>	if (IN_VLD = '0') then
-										DATA_EN		<= '1';
-										DATA_WREN	<= '1';
-										pc_inc		<= '1';
-										nstate 		<= S_FETCH;
-									else
-										nstate		<= S_LOAD;
-									end if;
+						DATA_EN		<= '1';
+						DATA_WREN	<= '1';
+						pc_inc		<= '1';
+						nstate 		<= S_FETCH;
+					else
+						nstate		<= S_LOAD;
+					end if;
 								
 			when S_WHILE_BEG =>	DATA_EN		<= '1';
-										DATA_WREN	<= '0';
-										pc_inc		<= '1';
-										nstate 		<= S_WHILE_BEG1;
+						DATA_WREN	<= '0';
+						pc_inc		<= '1';
+						nstate 		<= S_WHILE_BEG1;
 			when S_WHILE_BEG1 =>	if (DATA_RDATA /= "00000000") then
-											nstate 	<= S_FETCH;
-										else
-											cnt_inc 	<= '1';
-											nstate 	<= S_WHILE_BEG2;
-										end if;
-			when S_WHILE_BEG2 =>	CODE_EN 		<= '1';
-										nstate 		<= S_WHILE_BEG3;
-			when S_WHILE_BEG3 => if (cnt_num = "00000000") then
-											nstate	<= S_FETCH;
-										else
-											if (CODE_DATA = x"5B") then 
-												cnt_inc 	<= '1';
-											elsif (CODE_DATA = x"5D") then
-												cnt_dec 	<= '1';
-											end if;
-											pc_inc 	<= '1';
-											nstate 	<= S_WHILE_BEG2;
-										end if;
+							nstate 	<= S_FETCH;
+						else
+							cnt_inc <= '1';
+							nstate 	<= S_WHILE_BEG2;
+						end if;
+			when S_WHILE_BEG2 =>	CODE_EN		<= '1';
+						nstate 		<= S_WHILE_BEG3;
+			when S_WHILE_BEG3 => 	if (cnt_num = "00000000") then
+							nstate	<= S_FETCH;
+						else
+							if (CODE_DATA = x"5B") then 
+								cnt_inc 	<= '1';
+							elsif (CODE_DATA = x"5D") then
+								cnt_dec 	<= '1';
+							end if;
+							pc_inc 	<= '1';
+							nstate 	<= S_WHILE_BEG2;
+						end if;
 
-			when S_WHILE_END =>	DATA_EN 		<= '1';
-										DATA_WREN 	<= '0';
-										nstate 		<= S_WHILE_END1;
-			when S_WHILE_END1 => if (DATA_RDATA = "00000000") then
-											pc_inc 	<= '1';
-											nstate 	<= S_FETCH;
-										else
-											cnt_inc <= '1';
-											pc_dec <= '1';
-											nstate <= S_WHILE_END2;
-										end if;
-			when S_WHILE_END2 =>	CODE_EN <= '1';
-										nstate <= S_WHILE_END3;
-			when S_WHILE_END3 => if (cnt_num = "00000000") then
-											nstate <= S_FETCH;
-										else
-											if (CODE_DATA = X"5D") then
-												cnt_inc <= '1';
-											elsif (CODE_DATA = X"5B") then
-												cnt_dec <= '1';
-											end if;
-											nstate <= S_WHILE_END4;
-										end if;
-			when S_WHILE_END4 => if (cnt_num = "00000000") then
-											pc_inc <= '1';
-										else
-											pc_dec <= '1';
-										end if;
-										nstate <= S_WHILE_END2;
+			when S_WHILE_END =>	DATA_EN 	<= '1';
+						DATA_WREN 	<= '0';
+						nstate 		<= S_WHILE_END1;
+			when S_WHILE_END1 => 	if (DATA_RDATA = "00000000") then
+							pc_inc 	<= '1';
+							nstate 	<= S_FETCH;
+						else
+							cnt_inc <= '1';
+							pc_dec 	<= '1';
+							nstate 	<= S_WHILE_END2;
+						end if;
+			when S_WHILE_END2 =>	CODE_EN 	<= '1';
+						nstate		<= S_WHILE_END3;
+			when S_WHILE_END3 => 	if (cnt_num = "00000000") then
+							nstate <= S_FETCH;
+						else
+							if (CODE_DATA = X"5D") then
+								cnt_inc <= '1';
+							elsif (CODE_DATA = X"5B") then
+								cnt_dec <= '1';
+							end if;
+							nstate <= S_WHILE_END4;
+						end if;
+			when S_WHILE_END4 =>	if (cnt_num = "00000000") then
+							pc_inc <= '1';
+						else
+							pc_dec <= '1';
+						end if;
+						nstate <= S_WHILE_END2;
 									
-			when S_BREAK => 	pc_inc 	<= '1';
-									cnt_inc 	<= '1';
-									nstate <= S_BREAK1;
-			when S_BREAK1 => 	if (cnt_num = "00000000") then
-										nstate	<= S_FETCH;
-									else
-										CODE_EN	<= '1';
-										nstate	<= S_BREAK2;
-									end if;
+			when S_BREAK => pc_inc		<= '1';
+					cnt_inc 	<= '1';
+					nstate		<= S_BREAK1;
+			when S_BREAK1 =>	if (cnt_num = "00000000") then
+							nstate	<= S_FETCH;
+						else
+							CODE_EN	<= '1';
+							nstate	<= S_BREAK2;
+						end if;
 			when S_BREAK2 => if (CODE_DATA = X"5B") then
-										cnt_inc	<= '1';
-									elsif (CODE_DATA = X"5D") then
-										cnt_dec	<= '1';
-									end if;
-									pc_inc <= '1';
-									nstate <= S_BREAK1;
-									
+						cnt_inc	<= '1';
+					elsif (CODE_DATA = X"5D") then
+						cnt_dec	<= '1';
+					end if;
+					pc_inc <= '1';
+					nstate <= S_BREAK1;
+								
 			when S_RETURN =>	nstate <= S_RETURN;
 
 			when S_OTHERS =>	pc_inc <= '1';
-									nstate <= S_FETCH;
+						nstate <= S_FETCH;
 						
 			when others =>		null;
 		end case;
